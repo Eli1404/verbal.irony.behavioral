@@ -10,13 +10,13 @@ library(webr)
 setwd("/home/eli/Desktop/Neurobiologia/projects/ongoing/verbal.irony/facilitators/experiment.2/")
 
 # data --------------------------------------------------------------------
-experiment.2.by.participant <- read_csv("general/exp2.paralinguistic.results_by_participant.csv") 
+experiment.2.by.participant <- read_csv("general/exp2.paralinguistic.results_by_participant.csv")
 
 # descriptives ------------------------------------------------------------
 descriptives.participantes <- experiment.2.by.participant %>% 
-  ungroup() %>% 
   dplyr::select(7:27) %>% 
-  numSummary(.) %>% 
+  numSummary() %>% 
+  mutate_if(is.numeric, round, 2) %>% 
   write_csv(., "results/descriptives.participants.csv")
 
 # differences by sex ------------------------------------------------------
@@ -35,81 +35,6 @@ degree_sex <- experiment.2.by.participant %>%
   adjust_pvalue(method = "bonferroni") %>% 
   mutate(p.adj = round(p.adj,3)) %>% 
   write_csv(., "results/anova-degree*sex.csv") 
-
-# comparatives no parametric ----------------------------------------------
-Friedman_fe <- experiment.2.by.participant %>%
-  dplyr::select(1,3,5,7,9,11) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  mutate_at(1:5, as.factor) %>% 
-  friedman_test(value ~ condition | id) %>% 
-  adjust_pvalue(method = "bonferroni") %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Friedman.test.fe.csv")
-
-Friedman_prosody <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,13,15,17) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  friedman_test(value ~ condition | id) %>% 
-  adjust_pvalue(method = "bonferroni") %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Friedman.test.prosody.csv")
-
-Friedman_fe.rt <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,8,10,12) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  mutate_at(1:5, as.factor) %>% 
-  friedman_test(value ~ condition | id) %>% 
-  adjust_pvalue(method = "bonferroni") %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Friedman.test.fe.rt.csv")
-
-Friedman_prosody.rt <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,14,16,18) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  friedman_test(value ~ condition | id) %>% 
-  adjust_pvalue(method = "bonferroni") %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Friedman.test.prosody.rt.csv")
-
-Mann_context.prosody <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,13,15,17) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  mutate_at(1:5, as.factor) %>% 
-  wilcox_test(value ~ condition, paired = T) %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Mann.test.prosody.csv")
-
-Mann_context.fe <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,7,9,11) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  mutate_at(1:5, as.factor) %>% 
-  wilcox_test(value ~ condition, paired = T) %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Mann.test.fe.csv")
-
-Mann_context.prosody.rt <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,14,16,18) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  mutate_at(1:5, as.factor) %>% 
-  wilcox_test(value ~ condition, paired = T) %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Mann.test.prosody.rt.csv")
-
-Mann_context.fe.rt <- experiment.2.by.participant %>%  
-  dplyr::select(1,3,5,8,10,12) %>% 
-  gather(4:6, key = "variable", value = "value") %>% 
-  separate(variable, into = c("expName", "condition")) %>%
-  mutate_at(1:5, as.factor) %>% 
-  wilcox_test(value ~ condition, paired = T) %>% 
-  mutate(p.adj = round(p.adj,3)) %>% 
-  write_csv(., "results/Mann.test.fe.rt.csv")
 
 # plots -------------------------------------------------------------------
 correlations <- experiment.2.by.participant %>% 
@@ -185,20 +110,16 @@ export_formattable <- function(f, file, width = "100%", height = NULL,
 
 # tabla -------------------------------------------------------------------
 tabla <- spanish %>%
-  gather(7:27, key = "Prueba", value = "score") %>% 
-  select(7,8) %>% 
+  gather(19:27, key = "Prueba", value = "score") %>% 
+  select(19:20) %>% 
   dplyr::group_by(Prueba) %>% 
   numSummary() %>%
-  mutate(Prueba = factor(Prueba, levels = c("EF Ironía puntuación", "EF Literal puntuación","EF Sin relación puntuación",
-                                            "Prosody Ironía puntuación", "Prosody Literal puntuación","Prosody Sin relación puntuación",
-                                            "EF Ironía tr","EF Literal tr", "EF Sin relación tr",
-                                            "Prosodia Ironía tr", "Prosodia Literal tr","Prosodia Sin relación tr",
-                                            "RMET","RMET.tr", "cambio atencional","atención a detalles",
+  mutate(Prueba = factor(Prueba, levels = c("RMET","RMET.tr", "cambio atencional","atención a detalles",
                                             "comunicación", "imaginación", "habilidades sociales", "AQ","SSS"))) %>% 
   arrange(Prueba) %>% 
   select(-2,-7,-6,-13) %>% 
-  rename(media = mean, DE = sd, mediana = median, rango = range)
+  dplyr::rename(media = mean, DE = sd, mediana = median, rango = range)
 
-table.formattable <- formattable(tabla, digits = 1)
+table.formattable <- formattable(tabla, digits = 2)
 export_formattable(table.formattable, "plots/exp2.resultados.psicometricos.png")
 export_formattable(table.formattable, "/home/eli/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp2.resultados.psicometricos.png")
