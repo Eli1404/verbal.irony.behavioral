@@ -37,18 +37,18 @@ experiment.2 <- facial.expression %>%
   select(1:3,18,19,20,24,27,43,44) %>% 
   rename_at(7,~"id") %>% 
   dplyr::rename(answer = key_resp_1.keys, score = key_resp_1.corr, rt = key_resp_1.rt) %>% 
-  mutate(answer = recode(answer, "1" = "Irony", "2" = "Literal", "3" = "Unrelated")) %>% 
+  dplyr::mutate(answer = dplyr::recode(answer, "1" = "Irony", "2" = "Literal", "3" = "Unrelated")) %>% 
   full_join(general.data.pavlovia) %>% 
-  mutate(sex = recode(sex, "Másculino" = "male", "Femenino" = "female")) %>% 
+  mutate(sex = dplyr::recode(sex, "Másculino" = "male", "Femenino" = "female")) %>% 
   mutate(presentation = "psychopy-pavlovia") %>% 
   mutate(modality.of.presentation = ifelse(expName == "prosody", 1, 0)) %>% 
-  mutate(modality.of.presentation = recode(modality.of.presentation,"1" = "audio", "0" = "text and image")) %>% 
-  mutate(actor.sex = recode(actor,"019.jpg" = "M","184.jpg" = "M",
+  mutate(modality.of.presentation = dplyr::recode(modality.of.presentation,"1" = "audio", "0" = "text and image")) %>% 
+  mutate(actor.sex = dplyr::recode(actor,"019.jpg" = "M","184.jpg" = "M",
                         "075.jpg" = "F", "078.jpg" = "F")) %>% 
   arrange(expName,id) %>% 
   drop_na(sex) %>%  
   drop_na(condition) %>% 
-  mutate(expName = recode(expName, "Expresion facial" = "Facial expression",
+  mutate(expName = dplyr::recode(expName, "Expresion facial" = "Facial expression",
                           "Audios_prosodia" = "Prosody")) %>% 
   write_csv(.,"../../../general/exp2.paralinguistic.full_stimuli_data.csv")
   
@@ -77,7 +77,7 @@ experiment.2.filted_selected <- experiment.2 %>%
   full_join(selected_stimuli.all) %>% 
   drop_na(selected) %>% 
   write_csv(.,"../../../general/exp2.paralinguistic.full_stimuli_data.filter_selected.csv")
-  
+
 # psychometrical test -----------------------------------------------------
 # rmet --------------------------------------------------------------------
 setwd("../../rmet/data/")
@@ -126,10 +126,24 @@ SSS <- read_csv("../../google.forms/SSS.csv") %>%
   group_by(id) %>%
   dplyr::summarise(SSS = round(mean(answer), 2))
 
-# data by participant -----------------------------------------------------
+psychometrics <- full_join(RMET,AQ_Task) %>% 
+  full_join(SSS) %>% 
+  mutate_at(1, as.factor) %>% 
+  full_join(general.data.pavlovia) %>% 
+  dplyr::select(1,11:15,2:10) %>% 
+  rename_at(5,~"group") %>% 
+  write_csv(.,"../../../general/exp2.psychometrics.csv")
+# data by participants ----------------------------------------------------
+experiment.2.by.participant.rt <- experiment.2.filted_selected %>% 
+  dplyr::group_by(expName,id, condition) %>% 
+  filter(score == 1) %>% 
+  dplyr::summarise(rt = round(mean(rt,na.rm = T),2)) %>% 
+  ungroup()
+
 experiment.2.by.participant <- experiment.2.filted_selected %>% 
   dplyr::group_by(expName,id, condition) %>% 
-  dplyr::summarise(score = round(mean(score, na.rm = T),2)*100, rt = round(mean(rt,na.rm = T),2)) %>% 
+  dplyr::summarise(score = round(mean(score, na.rm = T),2)*100) %>%
+  full_join(experiment.2.by.participant.rt) %>% 
   ungroup() %>% 
   filter(score!="NaN") %>% 
   mutate_at(1:2,as.factor) %>% 
@@ -157,12 +171,12 @@ experiment.2.by.participant <- experiment.2.filted_selected %>%
 # data by participant spanish ---------------------------------------------
 experiment.2.by.participant.spanish <- experiment.2.by.participant %>% 
   dplyr::rename("sexo" = "sex", "edad" = "age", "grado" = "degree", "grupo" = "group", 
-         "EF Ironía puntuación" = "FE.Irony.score", "EF Ironía tr" = "FE.Irony.rt",
-         "EF Literal puntuación" = "FE.Literal.score", "EF Literal tr" = "FE.Literal.rt",
-         "EF Sin relación puntuación" = "FE.Unrelated.score", "EF Sin relación tr" = "FE.Unrelated.rt",
-         "Prosody Ironía puntuación" = "Prosody.Irony.score", "Prosodia Ironía tr" = "Prosody.Irony.rt",
-         "Prosody Literal puntuación" = "Prosody.Literal.score", "Prosodia Literal tr" = "Prosody.Literal.rt",
-         "Prosody Sin relación puntuación" = "Prosody.Unrelated.score", "Prosodia Sin relación tr" = "Prosody.Unrelated.rt",
-         "RMET" = "rmet","RMET.tr" = "rmet.rt", "cambio atencional" = "attention switching","atención a detalles" = "attention to detail",
-        "comunicación"  = "communication", "imaginación" = "imagination", "habilidades sociales" = "social skill") %>% 
+                "EF Ironía puntuación" = "FE.Irony.score", "EF Ironía tr" = "FE.Irony.rt",
+                "EF Literal puntuación" = "FE.Literal.score", "EF Literal tr" = "FE.Literal.rt",
+                "EF Sin relación puntuación" = "FE.Unrelated.score", "EF Sin relación tr" = "FE.Unrelated.rt",
+                "Prosody Ironía puntuación" = "Prosody.Irony.score", "Prosodia Ironía tr" = "Prosody.Irony.rt",
+                "Prosody Literal puntuación" = "Prosody.Literal.score", "Prosodia Literal tr" = "Prosody.Literal.rt",
+                "Prosody Sin relación puntuación" = "Prosody.Unrelated.score", "Prosodia Sin relación tr" = "Prosody.Unrelated.rt",
+                "RMET" = "rmet","RMET.tr" = "rmet.rt", "cambio atencional" = "attention switching","atención a detalles" = "attention to detail",
+                "comunicación"  = "communication", "imaginación" = "imagination", "habilidades sociales" = "social skill") %>% 
   write_csv(.,"../../../general/exp2.context.results_by_participant.spanish.csv")
