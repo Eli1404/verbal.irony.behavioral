@@ -6,44 +6,38 @@ library(ggstatsplot)
 setwd("~/Desktop/Neurobiologia/projects/ongoing/verbal.irony/discrepancy/experiment.1/")
 
 # reading data ------------------------------------------------------------
-experiment.1 <- read_csv("general/exp1.context.full_stimuli_data.csv")
+experiment.1 <- read_csv("general/exp1.context.full_stimuli_data.csv") 
 
 # descriptives ------------------------------------------------------------
-descriptives.score <- experiment.1 %>% 
-  select(2,5,6,8) %>% 
-  dplyr::group_by(condition) %>% 
-  numSummary() 
-
-descriptives.condition.vars.correctans <- experiment.1 %>% 
-  filter(score == 1) %>% 
-  select(2,9) %>% 
-  dplyr::group_by(condition) %>% 
-  numSummary() %>%
-  mutate(vars = "rt") %>% 
-  full_join(descriptives.score) %>% 
-  select(1,14,2:13) %>% 
-  write_csv(.,"results/descriptives.condition_correctans.csv")
-
-descriptives.score.without.filter <- experiment.1 %>% 
-  select(2,8,5,6,9) %>% 
-  dplyr::group_by(condition) %>% 
-  numSummary() %>%
-  write_csv(.,"results/descriptives.condition_without.filter.csv")
-
 descriptives.stimuli.score <- experiment.1 %>% 
   dplyr::group_by(stimuli,condition) %>%
   numSummary(score) %>% 
-  dplyr::mutate(mean = round(mean*100,2), sd = round(sd*100,2)) %>% 
+  dplyr::mutate(mean = mean*100, sd = sd*100) %>% 
   mutate(vars = "score")
 
-descriptives.stimuli.vars <- experiment.1 %>% 
+descriptives.stimuli.rt <- experiment.1 %>% 
+  dplyr::group_by(stimuli,condition) %>%
   filter(score == 1) %>% 
-  select(2,5,6,9,10) %>% 
+  numSummary(rt) %>% 
+  mutate(vars = "rt")
+
+descriptives.stimuli.vars <- experiment.1 %>% 
+  dplyr::select(2,5,6,10) %>% 
   dplyr::group_by(condition, stimuli) %>% 
   numSummary() %>%
   full_join(descriptives.stimuli.score) %>% 
+  full_join(descriptives.stimuli.rt) %>% 
+  mutate_if(is.numeric, round,2) %>% 
   arrange(vars) %>% 
   write_csv(.,"results/descriptives.condition.phrase.csv")
+
+descriptives.condition.vars.correctans <- descriptives.stimuli.vars %>% 
+  ungroup() %>% 
+  select(1,3,5) %>% 
+  dplyr::group_by(vars, condition) %>%
+  numSummary() %>%
+  mutate_if(is.numeric, round, 2) %>% 
+  write_csv(.,"results/descriptives.condition_correctans.csv")
 
 # outliers ----------------------------------------------------------------
 outliers.general <- descriptives.stimuli.vars %>% 
@@ -55,6 +49,7 @@ outliers.general <- descriptives.stimuli.vars %>%
 # normality ---------------------------------------------------------------
 shapiro.general <- descriptives.stimuli.vars %>% 
   select(vars, condition, mean) %>% 
+  mutate(mean = log10(mean)) %>% 
   dplyr::group_by(vars, condition) %>% 
   shapiro_test(mean) %>% 
   dplyr::mutate(p = round(p,3)) %>% 
@@ -68,22 +63,77 @@ homogeneity.condition <- descriptives.stimuli.vars %>%
   levene_test(mean ~ condition) %>%
   dplyr::mutate(p = round(p,4)) 
 
-# welch anova -------------------------------------------------------------
-anova.test.condition <- descriptives.stimuli.vars %>% 
-  group_by(vars) %>% 
-  welch_anova_test(mean ~ condition) %>% 
-  adjust_pvalue(method = "bonferroni") %>%
-  add_significance("p.adj") %>% 
-  mutate(p.adj = round(p.adj, 3)) %>% 
-  write_csv(.,"results/anova-welch.csv")
+# ggwithinstats-Friedman  -------------------------------------------------
+ggstat.score <- experiment.1 %>% 
+  mutate_at(1:2, as.factor) %>% 
+  group_by(condition, participant) %>% 
+  dplyr::summarise(score = mean(score*100)) %>% 
+  ungroup() %>% 
+  dplyr::mutate(condition = dplyr::recode(condition,"Ironic"  = "Ironía", "Unrelated" = "Sin relación", 
+                                          "White lie" = "Mentira")) %>%
+  ggwithinstats(condition, score,
+                p.adjust.method = "bonferroni",
+                bf.message = F, 
+                results.subtitle = F,
+                type = "np",
+                centrality.path = F,
+                ylab = "Porcentaje de clasificación",
+                xlab = "Condición",
+                title = "a")
 
-games.test.accuaracy <- descriptives.stimuli.vars %>% 
-  group_by(vars) %>%
-  games_howell_test(mean ~ condition) %>%
-  adjust_pvalue(method = "bonferroni") %>%
-  mutate(p.adj = round(p.adj,3)) %>% 
-  arrange(p.adj) %>% 
-  write_csv(.,"results/games-test.csv")
+ggstat.rt <- experiment.1 %>% 
+  mutate_at(1:2, as.factor) %>% 
+  group_by(condition, participant) %>% 
+  dplyr::summarise(rt = mean(rt)) %>% 
+  ungroup() %>% 
+  dplyr::mutate(condition = dplyr::recode(condition,"Ironic"  = "Ironía", "Unrelated" = "Sin relación", 
+                                          "White lie" = "Mentira")) %>%
+  ggwithinstats(condition, rt,  
+                p.adjust.method = "bonferroni",
+                bf.message = F,
+                results.subtitle = F,
+                type = "np",
+                centrality.path = F,
+                ylab = "Tiempo de clasificación (s)",
+                xlab = "Condición",
+                title = "b")
+ggpubr::ggarrange(ggstat.score, ggstat.rt)
+ggsave("~/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp1.violin.condiciones.spanish.jpg", width = 9, height = 5)
+ggsave("plots/exp1.violin.condiciones.spanish.jpg", width = 9, height = 5)
+
+experiment.1 %>% 
+  mutate_at(1:2, as.factor) %>% 
+  group_by(condition, participant) %>% 
+  dplyr::summarise(context.rt = mean(context.rt)) %>% 
+  ungroup() %>% 
+  dplyr::mutate(condition = dplyr::recode(condition,"Ironic"  = "Ironía", "Unrelated" = "Sin relación", 
+                                          "White lie" = "Mentira")) %>%
+  ggwithinstats(condition, context.rt,  
+                p.adjust.method = "bonferroni",
+                bf.message = F,
+                results.subtitle = T,
+                type = "np",
+                centrality.path = F,
+                ylab = "Tiempo de lectura de contextos (s)",
+                xlab = "Condición")
+ggsave("~/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp1.violin.condiciones.spanish.context.rt.jpg", width = 9, height = 6)
+
+experiment.1 %>% 
+  mutate_at(1:2, as.factor) %>% 
+  group_by(condition, participant) %>% 
+  dplyr::summarise(sentence.rt = mean(sentence.rt)) %>% 
+  ungroup() %>% 
+  dplyr::mutate(condition = dplyr::recode(condition,"Ironic"  = "Ironía", "Unrelated" = "Sin relación", 
+                                          "White lie" = "Mentira")) %>%
+  ggwithinstats(condition, sentence.rt,  
+                p.adjust.method = "bonferroni",
+                bf.message = F,
+                results.subtitle = T,
+                type = "np",
+                centrality.path = F,
+                ylab = "Tiempo de lectura de enunciados (s)",
+                xlab = "Condición")
+ggsave("~/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp1.violin.condiciones.spanish.sentence.rt.jpg", width = 9, height = 6)
 
 # plot -------------------------------------------------------------------
 ggplot(descriptives.stimuli.score, aes(x= stimuli, y = mean, 
@@ -127,27 +177,3 @@ descriptives.stimuli.score %>%
   scale_y_continuous(n.breaks = 6)
 ggsave("~/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/error.bar.plot.stimuli.exp1.spanish.jpg", width = 11, height = 8)
 
-
-ggstat.score <- descriptives.stimuli.vars %>% 
-  filter(vars == "score") %>% 
-  dplyr::mutate(condition = dplyr::recode(condition,"Ironic"  = "Ironía", "Unrelated" = "Sin relación",                                          "White lie" = "Mentira")) %>%
-  ggbetweenstats(condition, mean,
-                 p.adjust.method = "bonferroni",
-                 bf.message = F, results.subtitle = F,
-                 ylab = "Porcentaje de clasificación",
-                 xlab = "Condición", 
-                 title = "a")
-
-ggstat.rt <- descriptives.stimuli.vars %>% 
-  filter(vars == "rt") %>% 
-  dplyr::mutate(condition = dplyr::recode(condition,"Ironic"  = "Ironía", "Unrelated" = "Sin relación",
-                                          "White lie" = "Mentira")) %>%
-  ggbetweenstats(condition, mean,  
-                 p.adjust.method = "bonferroni",
-                 bf.message = F, results.subtitle = F,
-                 ylab = "Tiempo de clasificación (s)",
-                 xlab = "Condición", 
-                 title = "b")
-ggpubr::ggarrange(ggstat.score, ggstat.rt)
-ggsave("~/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp1.violin.condiciones.spanish.jpg", width = 9, height = 5)
-ggsave("plots/exp1.violin.condiciones.spanish.jpg", width = 9, height = 5)
