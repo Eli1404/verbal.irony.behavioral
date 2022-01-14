@@ -3,6 +3,7 @@ rm(list = ls())
 library(data.table)
 library(tidyverse)
 library(plyr)
+library(webr)
 setwd("/home/eli/Desktop/Neurobiologia/projects/ongoing/verbal.irony/facilitators/experiment.3/tasks/google.forms/")
 
 # general csv reading -------------------------------------------------------------
@@ -197,3 +198,81 @@ experiment.3.by.participant.spanish <- experiment.3.by.participant %>%
                 "Historia corta espontánea" = "SST.Spontaneous","Historia corta explícita" = "SST.Explicit", "Historia corta comprensión" = "SST.Comprehension",
                 "Historia corta total" = "SST") %>% 
   write_csv(.,"../../../general/exp3.context.results_by_participant.spanish.csv")
+
+# facial expression without filter ----------------------------------------
+setwd("../../facial.expresion/data/")
+temp.fe.f = list.files(pattern="*.csv", recursive = T)
+facial.expression.f = rbindlist(lapply(temp.fe.f, fread), fill = TRUE) %>%
+  full_join(phrases.facilitators) %>%
+  mutate_at(c(4,24,35), as.factor) %>%
+  dplyr::select(-6:-24,-29,-30,-32:-34) %>%
+  mutate(expName = recode(expName, "Expresion facial" = "Facial expression")) %>% 
+  filter(condition != "") %>% 
+  mutate(participant = recode(participant,  "vianney" = "vianneymendoza00@gmail.com")) %>% 
+  mutate(actor.sex = recode(actor,"019.jpg" = "M","184.jpg" = "M",
+                            "075.jpg" = "F", "078.jpg" = "F")) %>% 
+  full_join(selected_stimuli.fe) %>% 
+  drop_na(selected) %>% 
+  select(-13)
+
+# prosody -----------------------------------------------------------------
+setwd("../../prosody/data/")
+temp.p.f = list.files(pattern="*.csv", recursive = T)
+prosody.f = rbindlist(lapply(temp.p.f, fread), fill = TRUE) %>%
+  mutate_at(21, as.factor) %>%
+  separate(Audio, into = c("stimuli", "voice")) %>%
+  mutate_at(c(1,16,35), as.factor) %>%
+  dplyr::select(-4:-30,-34:-37,-39,-40,-42:-57) %>% 
+  filter(condition != "") %>% 
+  mutate(expName = recode(expName,"Audios_prosodia" = "Prosody")) %>% 
+  full_join(selected_stimuli.p) %>% 
+  drop_na(selected) %>%
+  mutate_at(2, as.factor) %>% 
+  select(-9)
+
+# join data without filter ------------------------------------------------
+experiment.3.without.filter <- full_join(facial.expression.f,prosody.f) %>% 
+  full_join(contextual) %>% 
+  dplyr::rename("phrase" = "frase", "answer" = "key_resp_1.keys", 
+                "rt" ="key_resp_1.rt", "score" = "key_resp_1.corr",
+                "id" = "participant") %>% 
+  dplyr::select(-1) %>% 
+  mutate(answer = recode(answer, "1" = "Ironic", "2" = "Literal", "3" = "Unrelated")) %>% 
+  mutate(condition = recode(condition, "Absurdo" = "Unrelated", "Ironia" = "Ironic", 
+                            "Sin relacion" = "Unrelated", "Sincera" = "Literal",
+                            "Irony" = "Ironic")) %>% 
+  full_join(general.data) %>% 
+  filter(id != "aniavj@gmail.com") %>%
+  mutate(id = recode(id, "chokkoss@gmail.com" = "cokkoss@gmail.com")) %>%
+  write_csv(.,"../../../general/exp3.paralinguistic.full_stimuli_data_without.filter.csv")
+attach(experiment.3.without.filter)  
+
+experiment.3.without.filter %>%  
+  drop_na(stimuli) %>% 
+  mutate_at(c(1:5,8:15), as.factor) %>%
+  unnest() %>% 
+  group_by(expName, condition) %>% 
+  numSummary(score) %>% 
+  mutate(condition = recode(condition, "Irony" = "Ironic")) %>% 
+  mutate(expName = factor(expName, levels = c("Contextual discrepancy","Prosody", "Facial expression"))) %>%
+  filter(condition != "") %>% 
+  filter(expName != "") %>%
+  unnest() %>% 
+  ggplot(aes(x= stimuli, y = mean, 
+             ymax = (mean + sd), 
+             ymin = (mean - sd))) + 
+  theme_bw() +
+  facet_grid(expName~condition) +
+  geom_point(pch=1, fill = "black") +
+  geom_errorbar(width=0.6) +
+  geom_hline(yintercept = 65,color = "grey", alpha = 0.6) +
+  xlab("Item") +
+  ylab("Mean+DE") +
+  theme(text = element_text(size = 25),
+        panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  coord_flip() +
+  scale_y_continuous(n.breaks = 6)
+ggsave("~/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/error.bar.plot.stimuli.exp3_without.filter.jpg", width = 30, height = 4)
+library(webr)
