@@ -17,6 +17,7 @@ descriptives.participantes <- experiment.3.by.participant %>%
   ungroup() %>% 
   dplyr::select(4:34) %>% 
   numSummary(.) %>% 
+  mutate_if(is.numeric, round, 2) %>% 
   write_csv(., "results/descriptives.participants.csv")
 
 # differences by sex ------------------------------------------------------
@@ -97,25 +98,19 @@ export_formattable <- function(f, file, width = "100%", height = NULL,
 
 # tabla -------------------------------------------------------------------
 tabla <- spanish %>%
-  gather(4:34, key = "Prueba", value = "score") %>% 
-  select(4:5) %>% 
+  gather(22:34, key = "Prueba", value = "score") %>% 
+  select(22:23) %>% 
   group_by(Prueba) %>% 
   numSummary() %>% 
-  mutate(Prueba = factor(Prueba, levels = c("Contexto Ironía puntuación", "Contexto Literal puntuación","Contexto Sin relación puntuación", 
-                                            "EF Ironía puntuación", "EF Literal puntuación", "EF Sin relación puntuación",
-                                            "Prosody Ironía puntuación", "Prosody Literal puntuación", "Prosody Sin relación puntuación",
-                                            "Contexto Ironía tr","Contexto Literal tr","Contexto Sin relación tr", 
-                                            "EF Ironía tr", "EF Literal tr","EF Sin relación tr",
-                                            "Prosody Ironía tr", "Prosody Literal tr", "Prosody Sin relación tr",
-                                            "RMET","RMET.tr", "cambio atencional","atención a detalles",
+  mutate(Prueba = factor(Prueba, levels = c("RMET","RMET.tr", "cambio atencional","atención a detalles",
                                             "comunicación", "imaginación", "habilidades sociales","AQ" = "AQ.score",
                                             "Historia corta espontánea","Historia corta explícita", 
                                             "Historia corta comprensión","Historia corta total",
                                             "SSS"))) %>% 
   arrange(Prueba) %>% 
   select(-2,-7,-6,-13) %>% 
-  rename(media = mean, DE = sd, mediana = median, rango = range)
+  dplyr::rename(media = mean, DE = sd, mediana = median, rango = range)
 
-table.formattable <- formattable(tabla, digits = 1)
+table.formattable <- formattable(tabla, digits = 2)
 export_formattable(table.formattable, "plot/exp3.resultados.psicometricos.png")
 export_formattable(table.formattable, "/home/eli/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp3.resultados.psicometricos.png")
