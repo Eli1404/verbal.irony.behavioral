@@ -125,24 +125,20 @@ export_formattable <- function(f, file, width = "100%", height = NULL,
 
 # tabla -------------------------------------------------------------------
 tabla <- spanish %>%
-  gather(c(8,9,12,13,16,17,20,21,23:33), key = "Prueba", value = "score") %>% 
-  select(15,16) %>% 
+  gather(23:33, key = "Prueba", value = "score") %>% 
+  select(23,24) %>% 
   group_by(Prueba) %>% 
   numSummary() %>% 
-  mutate(Prueba = factor(Prueba, levels = c("Ironía puntuación", "Literal puntuación", 
-                                            "Sin relación puntuación","Mentira puntuación",
-                                            "Ironía clasificación tiempo","Literal clasificación tiempo",
-                                            "Sin relación clasificación tiempo","Mentira clasificación tiempo",
-                                            "Matrices progresivas de Raven", "Fluidez verbal",
+  mutate(Prueba = factor(Prueba, levels = c("Matrices progresivas de Raven", "Fluidez verbal",
                                             "Retención de dígitos en progresión", "Retención de dígitos en regresión",
                                             "Retención de dígitos", "Retención de dígitos tiempo",
                                             "Historia corta espontánea" ,"Historia corta explícita",                                            
                                             "Historia corta comprensión", "Historia corta total",
                                             "Diseño de cubos"))) %>% 
-  arrange(Prueba) %>% 
-  select(-2,-7,-6,-13) %>% 
-  rename(media = mean, DE = sd, mediana = median, rango = range)
+  arrange(Prueba) %>%
+  select(-2,-7,-6,-13) %>%
+  dplyr::rename(media = mean, DE = sd, mediana = median, rango = range)
 
-table.formattable <- formattable(tabla, digits = 1)
+table.formattable <- formattable(tabla, digits = 2)
 export_formattable(table.formattable, "plots/exp1.resultados.psicometricos.png")
 export_formattable(table.formattable, "/home/eli/Desktop/Neurobiologia/DoctoradoCienciasBiomedicas/Tesis/plot/exp1.resultados.psicometricos.png")
