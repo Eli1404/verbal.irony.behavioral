@@ -24,23 +24,31 @@ experiment.1 = rbindlist(lapply(temp, fread), fill = TRUE) %>%
                 "sentence.rt" = "key_resp_4.rt") %>% 
   dplyr::mutate(condition = dplyr::recode(condition, "Absurdo" = "Unrelated",  "Ironia" = "Ironic",
                                           "Mentira" = "White lie")) %>% 
-  mutate_at(c(1:4,7), as.factor) %>% 
-  full_join(phrase_stimuli) %>% 
+  mutate_at(c(1:4,7), as.factor) %>%
   ungroup() %>% 
+  full_join(phrase_stimuli) %>% 
   write_csv(., "../../general/exp1.context.full_stimuli_data.csv")
 
 # data by participant --------------------------------------------------
-experiment.1.by.participant <- experiment.1 %>% 
+experiment.1.by.participant.rt <- experiment.1 %>% 
   dplyr::select(1,2,5,6,8,9) %>% 
+  filter(score == 1) %>% 
   group_by(participant,condition) %>% 
-  summarise_all(list(mean)) %>% 
-  dplyr::mutate(score = round(score*100),
-                context.rt = round(context.rt,2),
-                sentence.rt = round(sentence.rt,2),
-                rt = round(rt,2)) %>% 
-  gather(3:6, key = "key", value = "value") %>% 
+  summarise(rt = round(mean(rt, na.rm = T),2)) %>% 
+  mutate(rt1 = "rt") %>% 
+  unite(variables, c("condition", "rt1")) %>% 
+  spread(variables, rt) 
+  
+experiment.1.by.participant <- experiment.1 %>% 
+  dplyr::select(1,2,5,6,8) %>% 
+  dplyr::group_by(participant,condition) %>% 
+  dplyr::summarise(score = round(mean(score*100)),
+                context.rt = round(mean(context.rt,2)),
+                sentence.rt = round(mean(sentence.rt,2))) %>% 
+  gather(3:5, key = "key", value = "value") %>% 
   unite("variables", 2:3) %>% 
   spread(variables, value) %>% 
+  full_join(experiment.1.by.participant.rt) %>% 
   full_join(base, by = "participant") %>% 
   dplyr::select(1,18:22,2:17,23:33) %>% 
   write_csv(.,"../../general/exp1.context.results_by_participant.csv")
@@ -56,3 +64,4 @@ experiment.1.by.participant.spanish <- experiment.1.by.participant %>%
          "Historia corta espontánea" = "SST.S","Historia corta explícita" = "SST.E", "Historia corta comprensión" = "SST.C",
          "Historia corta total" = "SST", "Matrices progresivas de Raven" = "Raven") %>% 
   write_csv(.,"../../general/exp1.context.results_by_participant.spanish.csv")
+
